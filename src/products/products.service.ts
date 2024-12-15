@@ -9,17 +9,20 @@ export class ProductsService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async create(createProductDto: CreateProductDto) {
-    return await this.prismaService.product.create({ data: createProductDto });
+    return this.prismaService.product.create({ data: createProductDto });
   }
 
   async findAll(paginationDto: PaginationDto) {
     const { limit, page } = paginationDto;
 
-    const total = await this.prismaService.product.count();
+    const total = await this.prismaService.product.count({
+      where: { available: true },
+    });
     const totalPages = Math.ceil(total / limit);
 
     return {
       data: await this.prismaService.product.findMany({
+        where: { available: true },
         orderBy: { id: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -34,7 +37,7 @@ export class ProductsService {
 
   async findOne(id: number) {
     const product = await this.prismaService.product.findUnique({
-      where: { id },
+      where: { id, available: true },
     });
 
     if (!product) {
@@ -44,11 +47,25 @@ export class ProductsService {
     return product;
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    await this.findOne(id);
+
+    return this.prismaService.product.update({
+      where: { id },
+      data: updateProductDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  async remove(id: number) {
+    await this.findOne(id);
+
+    const product = await this.prismaService.product.update({
+      where: { id },
+      data: {
+        available: false,
+      },
+    });
+
+    return product;
   }
 }
