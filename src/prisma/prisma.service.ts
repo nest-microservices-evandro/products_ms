@@ -11,12 +11,10 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger('ProductsService');
+  private readonly logger = new Logger('PrismaService');
 
   constructor() {
-    super({
-      log: ['query', 'error', 'info', 'warn'],
-    });
+    super();
   }
 
   async onModuleInit() {
