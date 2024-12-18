@@ -3,11 +3,20 @@ import { RpcException } from '@nestjs/microservices';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ErrorOrderDto } from './dto/error-order.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prismaService: PrismaService) {}
+
+  private microServiceError(errorOrderDto: ErrorOrderDto) {
+    throw new RpcException({
+      statusCode: errorOrderDto.statusCode,
+      message: errorOrderDto.message,
+      error: errorOrderDto.error,
+    });
+  }
 
   async create(createProductDto: CreateProductDto) {
     return this.prismaService.product.create({ data: createProductDto });
@@ -29,9 +38,12 @@ export class ProductsService {
         take: limit,
       }),
       meta: {
-        total: total,
-        currentPage: page,
-        totalPages: totalPages,
+        pagination: {
+          currentPage: page,
+          totalPages: totalPages,
+          perPage: limit,
+          totalItems: total,
+        },
       },
     };
   }
@@ -74,5 +86,27 @@ export class ProductsService {
     });
 
     return product;
+  }
+
+  async validateProducts(ids: number[]) {
+    ids = Array.from(new Set(ids));
+
+    const products = await this.prismaService.product.findMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+    });
+
+    if (products.length !== ids.length) {
+      this.microServiceError({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Some product do not exist',
+        error: 'Bad Request',
+      });
+    }
+
+    return products;
   }
 }
